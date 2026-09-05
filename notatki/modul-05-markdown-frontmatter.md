@@ -565,3 +565,68 @@ claude                               # start sesji (w bashu)
 ## 14. Moimi słowami
 
 <!-- Sekcja do uzupełnienia własnoręcznie na GitHubie -->
+
+---
+
+## 15. Uprawnienia plików w Git
+
+Każdy plik w Linuksie ma flagę „czy wolno mnie uruchomić jak program".
+Git zapamiętuje ją razem z treścią.
+
+| Tryb | Znaczenie |
+|---|---|
+| `100644` | zwykły plik — odczyt i zapis |
+| `100755` | plik wykonywalny |
+
+Notatka `.md` to nie program — powinna mieć `644`. Skrypt uruchamiany przez
+`./skrypt.py` może mieć `755`.
+
+### Skąd bierze się zły tryb
+
+Windows nie zna uniksowego bitu wykonywalności. Pliki kopiowane z `/mnt/c/...`
+do repo w WSL dostają domyślnie `755`. Pliki tworzone bezpośrednio w WSL
+dostają poprawne `644`.
+
+### Diagnostyka — trzy warstwy
+
+| Komenda | Co pokazuje |
+|---|---|
+| `git ls-tree HEAD plik` | tryb w ostatnim **commicie** |
+| `git ls-files -s plik` | tryb w **indeksie** |
+| `ls -l plik` | tryb na **dysku** |
+| `git config core.fileMode` | czy Git w ogóle śledzi ten bit |
+
+Ten sam schemat co przy diagnozie YAML: rozdziel warstwy, sprawdź każdą osobno,
+nie zgaduj z objawu.
+
+### Kierunek w `git diff` ma znaczenie
+
+    old mode 100644     <- stan w repo
+    new mode 100755     <- stan na dysku
+
+Czytanie tego odwrotnie prowadzi do naprawiania właściwej strony w złą stronę.
+
+### Naprawa
+
+    chmod 644 plik.md      # zmiana na dysku
+    git add plik.md        # zapis do poczekalni
+    git commit -m "..."    # zapis do historii
+
+`git update-index --chmod=-x` służy wyłącznie do repozytoriów leżących na systemie
+plików, który nie potrafi przechować tego bitu (np. repo na dysku Windows
+zamontowanym w WSL). Przy repo w katalogu domowym używa się zwykłego `chmod`.
+
+### Commit z zerem wstawień
+
+    2 files changed, 0 insertions(+), 0 deletions(-)
+     mode change 100755 => 100644
+
+To jedyna sytuacja, w której brak `insertions` jest poprawnym wynikiem — treść się
+nie zmieniła, tylko metadane. Sygnałem, że commit powstał, jest wtedy linia
+`[branch hash]`, nie liczba wstawień.
+
+### Dlaczego to cicha awaria
+
+Zły tryb niczego nie psuje. Plik działa, GitHub go renderuje, nikt nie dostaje błędu.
+Zostaje śmieć w metadanych repo. Wykrywasz to przez `git status --short`
+i `git ls-files -s`, nie przez komunikat.
